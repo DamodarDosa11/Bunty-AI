@@ -1,0 +1,172 @@
+================================================================================
+BUILD_GUIDE.txt — Bunty AI, Phase 1
+================================================================================
+This guide gets Phase 1 (streaming chat over Ollama, multi-conversation,
+auth, SQLite persistence) running from a clean checkout. Line numbers are
+approximate and may shift as the code evolves; where given, they identify
+the surrounding function so you can find the right spot even if numbers
+drift.
+
+--------------------------------------------------------------------------------
+0. PREREQUISITES
+--------------------------------------------------------------------------------
+- Python 3.11+  (verify: `python3 --version`)
+- Node.js 18+ and npm  (verify: `node --version && npm --version`)
+- Ollama installed separately: https://ollama.com/download
+
+--------------------------------------------------------------------------------
+1. INSTALL AND START OLLAMA
+--------------------------------------------------------------------------------
+Terminal commands:
+    ollama serve
+Expected output:
+    Ollama is running (or similar; the process stays in the foreground)
+
+In a second terminal, pull the default model:
+    ollama pull mistral
+Expected output (abbreviated):
+    pulling manifest
+    pulling ... 100%
+    success
+
+Verification:
+    curl http://localhost:11434/api/tags
+Expected output: JSON containing `"name":"mistral:latest"` in the `models` array.
+
+Common errors:
+    - "connection refused" on curl -> `ollama serve` isn't running; start it.
+    - `ollama pull` hangs -> check network/firewall; Ollama needs internet
+      access the first time to download the model.
+
+--------------------------------------------------------------------------------
+2. BACKEND SETUP
+--------------------------------------------------------------------------------
+File path: backend/
+Commands (from the project root):
+    cd backend
+    python3 -m venv .venv
+    source .venv/bin/activate        # Windows: .venv\Scripts\activate
+    pip install -r requirements.txt
+
+Expected output: pip installs ~12 packages ending in
+    Successfully installed fastapi-0.115.0 ... uvicorn-0.30.6 ...
+
+Common errors:
+    - "bcrypt has no attribute '__about__'" during first run -> requirements.txt
+      already pins `bcrypt==4.0.1` for compatibility with passlib 1.7.4. If you
+      see this, run: pip install --force-reinstall "bcrypt==4.0.1"
+
+Environment variables:
+File path: backend/.env.example -> copy to backend/.env
+Command:
+    cp .env.example .env
+Variables to review before anything beyond local, single-user use (all
+have working defaults for local dev):
+    SECRET_KEY                  - JWT signing key. CHANGE before any shared
+                                   or non-localhost deployment.
+    DEFAULT_ADMIN_PASSWORD      - change after first login via a future
+                                   "change password" endpoint, or by editing
+                                   the users table directly for now.
+    OLLAMA_BASE_URL             - default http://localhost:11434
+    OLLAMA_DEFAULT_MODEL        - default "mistral"
+    ACTIVE_PROVIDER             - default "ollama"; switching providers in
+                                   future phases means changing this value
+                                   once a new provider is registered in
+                                   backend/app/providers/registry.py
+                                   (function: get_active_provider, ~line 20)
+
+Start the backend:
+    uvicorn app.main:app --reload --port 8000
+Expected output:
+    INFO:     Started server process [...]
+    INFO:bunty:Bootstrapped default admin user 'admin'. ...
+    INFO:bunty:Bunty AI backend ready on provider 'ollama'
+    INFO:     Application startup complete.
+    INFO:     Uvicorn running on http://127.0.0.1:8000
+
+Verification:
+    curl http://127.0.0.1:8000/api/health
+Expected output:
+    {"status":"ok","app":"Bunty AI"}
+
+Rollback:
+    Stop the server (Ctrl+C). Delete backend/data/bunty.db to reset all
+    users/conversations/messages; it is recreated automatically on next
+    startup (function: init_db, backend/app/db/session.py, ~line 34).
+
+--------------------------------------------------------------------------------
+3. FRONTEND SETUP
+--------------------------------------------------------------------------------
+File path: frontend/
+Commands (new terminal, from project root):
+    cd frontend
+    npm install
+Expected output: `added N packages in Xs`
+
+Start the dev server:
+    npm run dev
+Expected output:
+    VITE v5.4.x  ready in ... ms
+    ➜  Local:   http://localhost:5173/
+
+Verification:
+    Open http://localhost:5173 in a browser. You should see the Bunty
+    sign-in screen (dark background, amber accent, serif "Bunty" title).
+    Sign in with username `admin`, password `changeme123`.
+
+Common errors:
+    - Blank page / console errors about /api -> backend isn't running on
+      :8000, or vite.config.ts's proxy target was changed. Check
+      frontend/vite.config.ts, the `server.proxy` block (~line 10).
+    - "Connection error" after sending a message -> Ollama isn't running,
+      or OLLAMA_BASE_URL in backend/.env doesn't match where it's listening.
+      The chat window will show the exact error text returned by the
+      backend (see backend/app/providers/ollama_provider.py, function
+      stream_chat, ~line 30, for how that message is constructed).
+
+Rollback:
+    Sign-out isn't wired to a button yet in Phase 1 — to reset the session,
+    clear the `bunty_token` key from localStorage (DevTools > Application
+    > Local Storage) or run in the browser console:
+        localStorage.removeItem('bunty_token')
+
+--------------------------------------------------------------------------------
+4. CHANGING THE DEFAULT MODEL
+--------------------------------------------------------------------------------
+File path: backend/.env
+Variable: OLLAMA_DEFAULT_MODEL
+Existing code (backend/app/core/config.py, class Settings, ~line 35):
+    ollama_default_model: str = "mistral"
+New value example:
+    OLLAMA_DEFAULT_MODEL=qwen2.5
+Required step: pull the model first — `ollama pull qwen2.5` — or new
+conversations will fail with a "model not found" error from Ollama.
+Verification: create a new chat in the UI; check
+    curl http://127.0.0.1:8000/api/providers/models -H "Authorization: Bearer <token>"
+lists the model you expect.
+
+--------------------------------------------------------------------------------
+5. RUNNING BOTH SERVICES TOGETHER (SUMMARY)
+--------------------------------------------------------------------------------
+Terminal 1: ollama serve
+Terminal 2: cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --port 8000
+Terminal 3: cd frontend && npm run dev
+Browser:    http://localhost:5173
+
+--------------------------------------------------------------------------------
+6. TROUBLESHOOTING INDEX
+--------------------------------------------------------------------------------
+"401 Unauthorized" on any /api call
+    -> Token expired (default 7 days, ACCESS_TOKEN_EXPIRE_MINUTES in
+       backend/.env) or missing. Sign in again.
+
+"Could not connect to Ollama at http://localhost:11434"
+    -> `ollama serve` not running, or OLLAMA_BASE_URL misconfigured.
+
+WebSocket closes immediately with no messages
+    -> Check backend terminal for a traceback; most likely an invalid/
+       expired token was passed as the `token` query param.
+
+Frontend shows stale conversation list after creating a chat elsewhere
+    -> Phase 1 doesn't multi-tab-sync; refresh the page.
+================================================================================

@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-950 text-ink-100 antialiased;
+  }
+
+  ::selection {
+    @apply bg-signal/30 text-ink-100;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme("colors.ink.600") transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: theme("colors.ink.600");
+    border-radius: 999px;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme("colors.signal.DEFAULT");
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .prose-bunty {
+    @apply text-ink-100 leading-relaxed;
+  }
+  .prose-bunty p {
+    @apply mb-3 last:mb-0;
+  }
+  .prose-bunty ul,
+  .prose-bunty ol {
+    @apply mb-3 ml-5 space-y-1;
+  }
+  .prose-bunty ul {
+    @apply list-disc;
+  }
+  .prose-bunty ol {
+    @apply list-decimal;
+  }
+  .prose-bunty code {
+    @apply rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[0.85em] text-signal-soft;
+  }
+  .prose-bunty pre {
+    @apply mb-3 overflow-x-auto rounded-lg border border-ink-700 bg-ink-900;
+  }
+  .prose-bunty pre code {
+    @apply bg-transparent p-0 text-ink-100;
+  }
+  .prose-bunty a {
+    @apply text-signal-soft underline underline-offset-2 hover:text-signal;
+  }
+  .prose-bunty h1,
+  .prose-bunty h2,
+  .prose-bunty h3 {
+    @apply mb-2 mt-4 font-display font-semibold text-ink-100 first:mt-0;
+  }
+  .prose-bunty blockquote {
+    @apply border-l-2 border-ink-600 pl-3 italic text-ink-300;
+  }
+}
