@@ -45,7 +45,44 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface ExtractedFile {
+  name: string;
+  text: string;
+  truncated: boolean;
+  warning: string | null;
+}
+
+async function extractFiles(files: File[]): Promise<ExtractedFile[]> {
+  const token = getToken();
+  const form = new FormData();
+  files.forEach((f) => form.append("uploads", f));
+
+  // Don't set Content-Type manually here — the browser needs to add its own
+  // multipart boundary, which it can only do if we let fetch infer it.
+  const res = await fetch("/api/files/extract", {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      detail = body.detail ?? detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(res.status, detail);
+  }
+
+  const data = (await res.json()) as { files: ExtractedFile[] };
+  return data.files;
+}
+
 export const api = {
+  extractFiles,
+
   login: (username: string, password: string) =>
     request<{ access_token: string }>("/api/auth/login", {
       method: "POST",

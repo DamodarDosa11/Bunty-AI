@@ -44,7 +44,7 @@ class Conversation(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     title: Mapped[str] = mapped_column(String(255), default="New Chat")
     pinned: Mapped[bool] = mapped_column(default=False)
-    model: Mapped[str] = mapped_column(String(128), default="mistral")
+    model: Mapped[str] = mapped_column(String(128), default="llama3.1")
     provider: Mapped[str] = mapped_column(String(64), default="ollama")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(

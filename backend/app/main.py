@@ -20,7 +20,7 @@ from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.models import User
 from app.db.session import AsyncSessionLocal, init_db
-from app.routers import auth, chat_ws, conversations, providers
+from app.routers import auth, chat_ws, conversations, files, providers
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bunty")
@@ -67,6 +67,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(conversations.router)
 app.include_router(providers.router)
+app.include_router(files.router)
 app.include_router(chat_ws.router)
 
 

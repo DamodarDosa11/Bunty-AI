@@ -46,7 +46,7 @@ class Settings(BaseSettings):
 
     # --- Ollama provider ---
     ollama_base_url: str = "http://localhost:11434"
-    ollama_default_model: str = "mistral"
+    ollama_default_model: str = "llama3.1"
     ollama_request_timeout_seconds: float = 120.0
 
     # --- Active provider ---
